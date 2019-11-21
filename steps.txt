@@ -1,0 +1,4 @@
+1. Download files and unzip
+2. Generate TFRecords
+3. Uplaod TFRecords to HDFS
+4. Train from TFRecord?
