@@ -45,6 +45,6 @@ if __name__ == "__main__":
   df = dfutil.loadTFRecords(sc, args.path, binary_features=['image_raw'])
   #df.show()
   
-  cluster = TFCluster.run(sc, dist.map_fun, args, args.cluster_size, num_ps, args.tensorboard, TFCluster.InputMode.SPARK)
+  cluster = TFCluster.run(sc, dist.main_fun, args, args.cluster_size, num_ps, args.tensorboard, TFCluster.InputMode.SPARK)
   cluster.train(df, args.epochs)
   cluster.shutdown()
