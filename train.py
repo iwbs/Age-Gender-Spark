@@ -43,9 +43,21 @@ if __name__ == "__main__":
   args = parser.parse_args()
   print("args:", args)
 
-  df = dfutil.loadTFRecords(sc, args.path, binary_features=['image_raw'])
+  tfr_rdd = sc.newAPIHadoopFile(args.path, "org.tensorflow.hadoop.io.TFRecordFileInputFormat",
+                                keyClass="org.apache.hadoop.io.BytesWritable",
+                                valueClass="org.apache.hadoop.io.NullWritable")
+
+  # infer Spark SQL types from tf.Example
+  record = tfr_rdd.take(1)[0]
+  example = tf.train.Example()
+  example.ParseFromString(bytes(record[0]))
+  schema = dfutil.infer_schema(example, binary_features=['image_raw'])
+
+  # convert serialized protobuf to tf.Example to Row
+  example_rdd = tfr_rdd.mapPartitions(lambda x: dfutil.fromTFExample(x, binary_features=['image_raw']))
+  #df = dfutil.loadTFRecords(sc, args.path, binary_features=['image_raw'])
   #df.show()
   
   cluster = TFCluster.run(sc, dist.main_fun, args, args.cluster_size, num_ps, args.tensorboard, TFCluster.InputMode.SPARK)
-#   cluster.train(df, args.epochs)
+  cluster.train(example_rdd, args.epochs)
   cluster.shutdown()
