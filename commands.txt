@@ -1,0 +1,73 @@
+/opt/spark-2.4.0-bin-hadoop2.7/bin/spark-submit \
+--master yarn \
+--deploy-mode cluster \
+--queue ${QUEUE} \
+--num-executors 8 \
+--executor-memory 2G \
+--py-files /home/hduser/Age-Gender-Spark/dist.py \
+--conf spark.dynamicAllocation.enabled=false \
+--conf spark.yarn.maxAppAttempts=1 \
+--archives hdfs:///user/${USER}/Python.zip#Python \
+--conf spark.executorEnv.LD_LIBRARY_PATH=$LIB_JVM:$LIB_HDFS \
+/home/hduser/Age-Gender-Spark/train.py \
+--images /user/hduser/imdb/train \
+--batch size 64 \
+--epochs 5 \
+--mode train \
+
+
+
+
+/opt/spark-2.4.0-bin-hadoop2.7/bin/spark-submit \
+--master yarn \
+--deploy-mode cluster \
+--queue ${QUEUE} \
+--num-executors 8 \
+--executor-memory 2G \
+--conf spark.dynamicAllocation.enabled=false \
+--conf spark.yarn.maxAppAttempts=1 \
+--archives hdfs:///user/${USER}/Python.zip#Python \
+--conf spark.executorEnv.LD_LIBRARY_PATH=$LIB_JVM:$LIB_HDFS \
+/home/hduser/Age-Gender-Spark/train.py \
+--images /user/hduser/imdb/train \
+--batch size 64 \
+--epochs 5 \
+--mode train \
+
+/opt/spark-2.4.0-bin-hadoop2.7/bin/spark-submit \
+--master yarn \
+--deploy-mode cluster \
+--queue ${QUEUE} \
+--num-executors 8 \
+--executor-memory 1G \
+--archives hdfs:///user/${USER}/Python.zip#Python \
+/home/hduser/TensorFlowOnSpark/examples/mnist/mnist_data_setup3.py \
+--output horse_human_csv3 \
+--format csv
+
+hdfs dfs -rm -r /user/hduser/horse_human_csv3
+
+/opt/spark-2.4.0-bin-hadoop2.7/bin/spark-submit \
+--master yarn \
+--deploy-mode cluster \
+--queue ${QUEUE} \
+--num-executors 8 \
+--executor-memory 1G \
+--archives hdfs:///user/${USER}/Python.zip#Python \
+/home/hduser/TensorFlowOnSpark/examples/mnist/test.py \
+--output horse_human_csv3 \
+--format csv
+
+/opt/spark-2.4.0-bin-hadoop2.7/bin/spark-submit \
+--master yarn \
+--deploy-mode cluster \
+--queue ${QUEUE} \
+--num-executors 8 \
+--executor-memory 6G \
+--conf spark.dynamicAllocation.enabled=false \
+--conf spark.yarn.maxAppAttempts=1 \
+--conf spark.executorEnv.LD_LIBRARY_PATH=$LIB_JVM:$LIB_HDFS \
+--jars hdfs:///user/${USER}/tensorflow-hadoop-1.10.0.jar \
+--archives hdfs:///user/${USER}/Python.zip#Python \
+/home/hduser/Age-Gender-Spark/test.py \
+--path /user/hduser/imdb/train2

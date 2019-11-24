@@ -4,6 +4,10 @@ sudo service ganglia-monitor restart
 sudo service apache2 restart
 sudo ufw disable
 
+start-dfs.sh
+start-yarn.sh
+mr-jobhistory-daemon.sh start historyserver
+
 ssh gpu20-x1 "sudo -S su - -c 'service ganglia-monitor restart'"
 ssh gpu20-x2 "sudo -S su - -c 'service ganglia-monitor restart'"
 
