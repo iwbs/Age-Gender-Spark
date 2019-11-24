@@ -4,13 +4,25 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 
 def main_fun(args, ctx):
-  import numpy as np
+  from datetime import datetime
+  import math
+  import numpy
   import tensorflow as tf
-  from tensorflowonspark import TFNode
+  import time
 
-  strategy = tf.distribute.experimental.MultiWorkerMirroredStrategy()
+  worker_num = ctx.worker_num
+  job_name = ctx.job_name
+  task_index = ctx.task_index
 
-  tf_feed = TFNode.DataFeed(ctx.mgr, False)
+  # Parameters
+  IMAGE_PIXELS = 64
+  hidden_units = 128
+
+  # Get TF cluster and server instances
+  cluster, server = ctx.start_cluster_server(1, args.rdma)
+
+  # Create generator for Spark data feed
+  tf_feed = ctx.get_data_feed(args.mode == 'train')
 
   def rdd_generator():
     while not tf_feed.should_stop():
@@ -30,7 +42,34 @@ def main_fun(args, ctx):
       else:
         return
 
-  ds = tf.data.Dataset.from_generator(rdd_generator, (tf.int64, tf.int64, tf.string), (tf.TensorShape([64, 64, 3]), tf.TensorShape([])))
-  ds = ds.batch(args.batch_size)
+  if job_name == "ps":
+    server.join()
+  elif job_name == "worker":
+    # Assigns ops to the local worker by default.
+    with tf.device(tf.train.replica_device_setter(
+      worker_device="/job:worker/task:%d" % task_index,
+      cluster=cluster)):
+      
+      ds = tf.data.Dataset.from_generator(rdd_generator, (tf.int64, tf.int64, tf.string), (tf.TensorShape([64, 64, 3]), tf.TensorShape([])))
+      ds = ds.batch(args.batch_size)
 
-  tf_feed.terminate()
+      saver = tf.train.Saver()
+      summary_op = tf.summary.merge_all()
+      init_op = tf.global_variables_initializer()
+
+    # Create a "supervisor", which oversees the training process and stores model state into HDFS
+    logdir = ctx.absolute_path(args.model)
+    print("tensorflow model path: {0}".format(logdir))
+    summary_writer = tf.summary.FileWriter("tensorboard_%d" % worker_num, graph=tf.get_default_graph())
+
+    hooks = [tf.train.StopAtStepHook(last_step=args.steps)] if args.mode == "train" else []
+    with tf.train.MonitoredTrainingSession(master=server.target,
+                                           is_chief=(task_index == 0),
+                                           scaffold=tf.train.Scaffold(init_op=init_op, summary_op=summary_op, saver=saver),
+                                           checkpoint_dir=logdir,
+                                           hooks=hooks) as sess:
+      print("{} session ready".format(datetime.now().isoformat()))
+      step = 0
+
+    # if sess.should_stop() or step >= args.steps:
+    tf_feed.terminate()

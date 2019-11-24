@@ -8,6 +8,8 @@ start-dfs.sh
 start-yarn.sh
 mr-jobhistory-daemon.sh start historyserver
 
+start-history-server.sh
+
 ssh gpu20-x1 "sudo -S su - -c 'service ganglia-monitor restart'"
 ssh gpu20-x2 "sudo -S su - -c 'service ganglia-monitor restart'"
 

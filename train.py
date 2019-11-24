@@ -33,12 +33,13 @@ if __name__ == "__main__":
 
   parser = argparse.ArgumentParser()
   parser.add_argument("--num-partitions", help="Number of output partitions", type=int, default=10)
-  parser.add_argument("--output", help="HDFS directory to save examples in parallelized format", default="mnist_data")
+  parser.add_argument("--model", help="HDFS path to save/load model during train/inference", default="imdb_model")
   parser.add_argument("--path", help="HDFS path")
   parser.add_argument("--cluster_size", help="number of nodes in the cluster", type=int, default=num_executors)
   parser.add_argument("--tensorboard", help="launch tensorboard process", action="store_true")
   parser.add_argument("--epochs", help="number of epochs", type=int, default=100)
   parser.add_argument("--batch_size", help="number of records per batch", type=int, default=64)
+  parser.add_argument("--mode", help="train|inference", default="train")
   args = parser.parse_args()
   print("args:", args)
 
