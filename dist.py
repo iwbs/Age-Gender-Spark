@@ -30,7 +30,7 @@ def main_fun(args, ctx):
       else:
         return
 
-  ds = tf.data.Dataset.from_generator(rdd_generator, (tf.int64, tf.int64, tf.string), (tf.TensorShape([64, 64, 3]), tf.TensorShape([])))
+  ds = tf.data.Dataset.from_generator(rdd_generator, (tf.int64, tf.int64, tf.string), (tf.TensorShape([]), tf.TensorShape([]), tf.TensorShape([64, 64, 3])))
   ds = ds.batch(args.batch_size)
 
   tf_feed.terminate()
