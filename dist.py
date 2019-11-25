@@ -21,11 +21,10 @@ def main_fun(args, ctx):
         # age = np.reshape(age, (0,))
         # gender = np.array(example[1]).astype(np.int64)
         # gender = np.reshape(gender, (1,))
-        # image = np.array(example[2]).astype(np.float32) / 255.0
-        # image = np.reshape(image, (64, 64, 3))
         age = example[0]
         gender = example[1]
-        image = example[2]
+        image = np.frombuffer(example[2], dtype=np.uint8)
+        image = np.reshape(image, (64, 64, 3))
         yield (age, gender, image)
       else:
         return
@@ -33,4 +32,4 @@ def main_fun(args, ctx):
   ds = tf.data.Dataset.from_generator(rdd_generator, (tf.int64, tf.int64, tf.string), (tf.TensorShape([]), tf.TensorShape([]), tf.TensorShape([64, 64, 3])))
   ds = ds.batch(args.batch_size)
 
-  tf_feed.terminate()
+  #tf_feed.terminate()

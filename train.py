@@ -59,5 +59,5 @@ if __name__ == "__main__":
   #df.show()
   
   cluster = TFCluster.run(sc, dist.main_fun, args, args.cluster_size, num_ps, args.tensorboard, TFCluster.InputMode.SPARK)
-  cluster.train(example_rdd, args.epochs)
+  #cluster.train(example_rdd, args.epochs)
   cluster.shutdown()
