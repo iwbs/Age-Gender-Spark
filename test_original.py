@@ -72,7 +72,7 @@ def choose_best_model(model_path, image_path, batch_size):
     result = []
     for idx in range(len(ckpt.all_model_checkpoint_paths)):
         print("restore model %d!" % idx)
-        _, _, _, _, _, mean_error_age, mean_gender_acc, mean_loss, _ = test_once(image_path, batch_size,
+        _, _, _, _, _, mean_error_age, mean_gender_acc, mean_loss = test_once(image_path, batch_size,
                                                                                  ckpt.all_model_checkpoint_paths[idx], )
         result.append([ckpt.all_model_checkpoint_paths[idx], mean_error_age, mean_gender_acc])
         if mean_gender_acc > best_gender_acc:
@@ -110,7 +110,7 @@ if __name__ == '__main__':
     else:
         ckpt = tf.train.get_checkpoint_state(args.model_path)
         if ckpt and ckpt.model_checkpoint_path:
-            _, _, _, _, _, mean_error_age, mean_gender_acc, mean_loss, _ = test_once(args.images,
+            _, _, _, _, _, mean_error_age, mean_gender_acc, mean_loss = test_once(args.images,
                                                                                      args.batch_size,
                                                                                      ckpt.model_checkpoint_path)
             print("Age_MAE:%.2f,Gender_Acc:%.2f%%,Loss:%.2f" % (mean_error_age, mean_gender_acc * 100, mean_loss))
