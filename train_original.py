@@ -15,7 +15,7 @@ def run_training(image_path, batch_size, epoch, model_path, log_dir, start_lr, w
         sess = tf.Session()
 
         # Input images and labels.
-        images, age_labels, gender_labels, _ = inputs(path=get_files_name(image_path), batch_size=batch_size,
+        images, age_labels, gender_labels = inputs(path=get_files_name(image_path), batch_size=batch_size,
                                                       num_epochs=epoch)
 
         # load network

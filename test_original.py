@@ -11,7 +11,7 @@ from utils import inputs, get_files_name
 def test_once(image_path, batch_size, model_checkpoint_path):
     with tf.Graph().as_default():
         sess = tf.Session()
-        images, age_labels, gender_labels, file_paths = inputs(
+        images, age_labels, gender_labels = inputs(
             path=get_files_name(image_path),
             batch_size=batch_size,
             num_epochs=1, allow_smaller_final_batch=True)
@@ -47,9 +47,8 @@ def test_once(image_path, batch_size, model_checkpoint_path):
         mean_error_age, mean_gender_acc, mean_loss = [], [], []
         try:
             while not coord.should_stop():
-                prob_gender_val, real_gender, prob_age_val, real_age, image_val, gender_acc_val, abs_age_error_val, cross_entropy_mean_val, file_names = sess.run(
-                    [prob_gender, gender_labels, prob_age, age_labels, images, gender_acc, abs_age_error, total_loss,
-                     file_paths], {train_mode: False})
+                prob_gender_val, real_gender, prob_age_val, real_age, image_val, gender_acc_val, abs_age_error_val, cross_entropy_mean_val = sess.run(
+                    [prob_gender, gender_labels, prob_age, age_labels, images, gender_acc, abs_age_error, total_loss], {train_mode: False})
                 mean_error_age.append(abs_age_error_val)
                 mean_gender_acc.append(gender_acc_val)
                 mean_loss.append(cross_entropy_mean_val)
@@ -63,7 +62,7 @@ def test_once(image_path, batch_size, model_checkpoint_path):
         coord.join(threads)
         sess.close()
         return prob_age_val, real_age, prob_gender_val, real_gender, image_val, np.mean(mean_error_age), np.mean(
-            mean_gender_acc), np.mean(mean_loss), file_names
+            mean_gender_acc), np.mean(mean_loss)
 
 
 def choose_best_model(model_path, image_path, batch_size):
