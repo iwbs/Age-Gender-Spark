@@ -11,8 +11,8 @@ def read_and_decode(filename_queue):
         features={
             'image_raw': tf.FixedLenFeature([], tf.string),
             'age': tf.FixedLenFeature([], tf.int64),
-            'gender': tf.FixedLenFeature([], tf.int64),
-            'file_name': tf.FixedLenFeature([], tf.string)
+            'gender': tf.FixedLenFeature([], tf.int64)
+            #'file_name': tf.FixedLenFeature([], tf.string)
         })
 
     # Convert from a scalar string tensor (whose single string has
@@ -41,8 +41,8 @@ def read_and_decode(filename_queue):
     # Convert label from a scalar uint8 tensor to an int32 scalar.
     age = features['age']
     gender = features['gender']
-    file_path = features['file_name']
-    return image, age, gender, file_path
+    #file_path = features['file_name']
+    return image, age, gender
 
 
 def inputs(path, batch_size, num_epochs, allow_smaller_final_batch=False):
@@ -71,18 +71,21 @@ def inputs(path, batch_size, num_epochs, allow_smaller_final_batch=False):
 
         # Even when reading in multiple threads, share the filename
         # queue.
-        image, age, gender, file_path = read_and_decode(filename_queue)
+        image, age, gender = read_and_decode(filename_queue)
 
         # Shuffle the examples and collect them into batch_size batches.
         # (Internally uses a RandomShuffleQueue.)
         # We run this in two threads to avoid being a bottleneck.
-        images, sparse_labels, genders, file_paths = tf.train.shuffle_batch(
-            [image, age, gender, file_path], batch_size=batch_size, num_threads=12,
-            capacity=1000 + 3 * batch_size,
+        images, sparse_labels, genders = tf.train.shuffle_batch(
+            [image, age, gender], 
+            batch_size=batch_size, 
+            num_threads=1,
+            capacity=2 * batch_size,
             # Ensures a minimum amount of shuffling of examples.
-            min_after_dequeue=1000, allow_smaller_final_batch=allow_smaller_final_batch)
+            min_after_dequeue=batch_size, 
+            allow_smaller_final_batch=allow_smaller_final_batch)
 
-        return images, sparse_labels, genders, file_paths
+        return images, sparse_labels, genders
 
 
 def get_files_name(path):

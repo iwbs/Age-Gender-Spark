@@ -63,7 +63,7 @@ def convert_to(data_set, name):
     shape_predictor = 'shape_predictor_68_face_landmarks.dat'
     detector = dlib.get_frontal_face_detector()
     predictor = dlib.shape_predictor(shape_predictor)
-    fa = FaceAligner(predictor, desiredFaceWidth=64)
+    fa = FaceAligner(predictor, desiredFaceWidth=160)
 
     error=0
     total=0
