@@ -9,6 +9,8 @@ def main_fun(args, ctx):
   import numpy as np
   import tensorflow as tf
   import time
+
+  import inception_resnet_v1
   
   #from tensorflowonspark import TFNode
   #strategy = tf.distribute.experimental.MultiWorkerMirroredStrategy()
@@ -36,7 +38,7 @@ def main_fun(args, ctx):
         age = example[0]
         gender = example[1]
         image = np.frombuffer(example[2], dtype=np.uint8)
-        image = np.reshape(image, (64, 64, 3))
+        image = np.reshape(image, (160, 160, 3))
         yield (age, gender, image)
       else:
         return
@@ -49,9 +51,48 @@ def main_fun(args, ctx):
       worker_device="/job:worker/task:%d" % task_index,
       cluster=cluster)):
       
-      ds = tf.data.Dataset.from_generator(rdd_generator, (tf.int64, tf.int64, tf.string), (tf.TensorShape([]), tf.TensorShape([]), tf.TensorShape([64, 64, 3])))
+      ds = tf.data.Dataset.from_generator(rdd_generator, (tf.int64, tf.int64, tf.string), (tf.TensorShape([]), tf.TensorShape([]), tf.TensorShape([160, 160, 3])))
       iterator = ds.make_one_shot_iterator()
-      _age, _gender, _image = iterator.get_next()
+      age_labels, gender_labels, images = iterator.get_next()
+      images = tf.reverse_v2(images, [-1])
+      images = tf.image.per_image_standardization(images)
+
+      train_mode = tf.placeholder(tf.bool)
+      age_logits, gender_logits, _ = inception_resnet_v1.inference(images, keep_probability=0.8, phase_train=train_mode, weight_decay=1e-5)
+
+      age_cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=age_labels, logits=age_logits)
+      age_cross_entropy_mean = tf.reduce_mean(age_cross_entropy)
+
+      gender_cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=gender_labels, logits=gender_logits)
+      gender_cross_entropy_mean = tf.reduce_mean(gender_cross_entropy)
+
+      total_loss = tf.add_n([gender_cross_entropy_mean, age_cross_entropy_mean] + tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
+
+      age_ = tf.cast(tf.constant([i for i in range(0, 101)]), tf.float32)
+      age = tf.reduce_sum(tf.multiply(tf.nn.softmax(age_logits), age_), axis=1)
+      abs_loss = tf.losses.absolute_difference(age_labels, age)
+
+      gender_acc = tf.reduce_mean(tf.cast(tf.nn.in_top_k(gender_logits, gender_labels, 1), tf.float32))
+
+      tf.summary.scalar("age_cross_entropy", age_cross_entropy_mean)
+      tf.summary.scalar("gender_cross_entropy", gender_cross_entropy_mean)
+      tf.summary.scalar("total loss", total_loss)
+      tf.summary.scalar("train_abs_age_error", abs_loss)
+      tf.summary.scalar("gender_accuracy", gender_acc)
+
+      # Add to the Graph operations that train the model.
+      global_step = tf.Variable(0, name="global_step", trainable=False)
+      lr = tf.train.exponential_decay(1e-3, global_step=global_step, decay_steps=3000, decay_rate=0.9, staircase=True)
+      optimizer = tf.train.AdamOptimizer(lr)
+      tf.summary.scalar("lr", lr)
+      update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)  # update batch normalization layer
+      with tf.control_dependencies(update_ops):
+        train_op = optimizer.minimize(total_loss, global_step)
+    
+      init_op = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
+
+
+
 
       # # Variables of the hidden layer
       # hid_w = tf.Variable(tf.truncated_normal([IMAGE_PIXELS * IMAGE_PIXELS, hidden_units],
@@ -112,12 +153,28 @@ def main_fun(args, ctx):
         # perform *synchronous* training.
 
         if args.mode == "train":
+          sess.run(init_op)
+          
+          merged = tf.summary.merge_all()
+          train_writer = tf.summary.FileWriter(log_dir, sess.graph)
+          
+          new_saver = tf.train.Saver(max_to_keep=100)
+          ckpt = tf.train.get_checkpoint_state(model_path)
+          if ckpt and ckpt.model_checkpoint_path:
+            new_saver.restore(sess, ckpt.model_checkpoint_path)
+            print("restore and continue training!")
+          else:
+            pass
+
+
+        
           # _, summary, step = sess.run([train_op, summary_op, global_step])
           # if (step % 100 == 0) and (not sess.should_stop()):
           #   print("{} step: {} accuracy: {}".format(datetime.now().isoformat(), step, sess.run(accuracy)))
           # if task_index == 0:
           #   summary_writer.add_summary(summary, step)
         else:  # args.mode == "inference"
+          pass
           # labels, preds, acc = sess.run([label, prediction, accuracy])
           # results = ["{} Label: {}, Prediction: {}".format(datetime.now().isoformat(), l, p) for l, p in zip(labels, preds)]
           # tf_feed.batch_results(results)
