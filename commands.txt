@@ -129,3 +129,22 @@ hdfs dfs -rm -r /user/hduser/horse_human_csv3
 --epochs 5 \
 --mode train \
 --model horse_human_model
+
+
+
+/opt/spark-2.4.0-bin-hadoop2.7/bin/spark-submit \
+--master yarn \
+--deploy-mode cluster \
+--queue ${QUEUE} \
+--num-executors 8 \
+--executor-memory 3G \
+--conf spark.dynamicAllocation.enabled=false \
+--conf spark.yarn.maxAppAttempts=1 \
+--conf spark.executorEnv.LD_LIBRARY_PATH=$LIB_JVM:$LIB_HDFS \
+--jars hdfs:///user/${USER}/tensorflow-hadoop-1.10.0.jar \
+--archives hdfs:///user/${USER}/Python.zip#Python \
+--py-files /home/hduser/Age-Gender-Spark/dist.py,/home/hduser/Age-Gender-Spark/inception_resnet_v1.py \
+/home/hduser/Age-Gender-Spark/train.py \
+--path /user/hduser/imdb/test \
+--epochs 5 \
+--model imdb_model

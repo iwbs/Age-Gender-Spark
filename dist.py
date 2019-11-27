@@ -29,19 +29,18 @@ def main_fun(args, ctx):
   def rdd_generator():
     while not tf_feed.should_stop():
       batch = tf_feed.next_batch(1)
-      if len(batch) > 0:
-        example = batch[0]
+      if len(batch) == 0:
+        return
+      row = batch[0]
         # age = np.array(example[0]).astype(np.int64)
         # age = np.reshape(age, (0,))
         # gender = np.array(example[1]).astype(np.int64)
         # gender = np.reshape(gender, (1,))
-        age = example[0]
-        gender = example[1]
-        image = np.frombuffer(example[2], dtype=np.uint8)
-        image = np.reshape(image, (160, 160, 3))
-        yield (age, gender, image)
-      else:
-        return
+      age = row[0]
+      gender = row[1]
+      image = np.frombuffer(row[2], dtype=np.uint8)
+      image = np.reshape(image, (160, 160, 3))
+      yield (age, gender, image)
 
   if job_name == "ps":
     server.join()
@@ -58,7 +57,7 @@ def main_fun(args, ctx):
       images = tf.image.per_image_standardization(images)
 
       train_mode = tf.placeholder(tf.bool)
-      age_logits, gender_logits, _ = inception_resnet_v1.inference(images, keep_probability=0.8, phase_train=train_mode, weight_decay=1e-5)
+      age_logits, gender_logits, _ = inception_resnet_v1.inference(images, keep_probability=args.keep_prob, phase_train=train_mode, weight_decay=args.weight_decay)
 
       age_cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=age_labels, logits=age_logits)
       age_cross_entropy_mean = tf.reduce_mean(age_cross_entropy)
@@ -82,55 +81,17 @@ def main_fun(args, ctx):
 
       # Add to the Graph operations that train the model.
       global_step = tf.Variable(0, name="global_step", trainable=False)
-      lr = tf.train.exponential_decay(1e-3, global_step=global_step, decay_steps=3000, decay_rate=0.9, staircase=True)
+      lr = tf.train.exponential_decay(args.learning_rate, global_step=global_step, decay_steps=3000, decay_rate=0.9, staircase=True)
       optimizer = tf.train.AdamOptimizer(lr)
       tf.summary.scalar("lr", lr)
       update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)  # update batch normalization layer
       with tf.control_dependencies(update_ops):
         train_op = optimizer.minimize(total_loss, global_step)
-    
+
+      saver = tf.train.Saver()
+      summary_op = tf.summary.merge_all()
       init_op = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
 
-
-
-
-      # # Variables of the hidden layer
-      # hid_w = tf.Variable(tf.truncated_normal([IMAGE_PIXELS * IMAGE_PIXELS, hidden_units],
-      #                     stddev=1.0 / IMAGE_PIXELS), name="hid_w")
-      # hid_b = tf.Variable(tf.zeros([hidden_units]), name="hid_b")
-      # tf.summary.histogram("hidden_weights", hid_w)
-
-      # # Variables of the softmax layer
-      # sm_w = tf.Variable(tf.truncated_normal([hidden_units, 10],
-      #                    stddev=1.0 / math.sqrt(hidden_units)), name="sm_w")
-      # sm_b = tf.Variable(tf.zeros([10]), name="sm_b")
-      # tf.summary.histogram("softmax_weights", sm_w)
-
-      # x_img = tf.reshape(x, [-1, IMAGE_PIXELS, IMAGE_PIXELS, 1])
-      # tf.summary.image("x_img", x_img)
-
-      # hid_lin = tf.nn.xw_plus_b(x, hid_w, hid_b)
-      # hid = tf.nn.relu(hid_lin)
-
-      # y = tf.nn.softmax(tf.nn.xw_plus_b(hid, sm_w, sm_b))
-
-      # global_step = tf.train.get_or_create_global_step()
-
-      # loss = -tf.reduce_sum(y_ * tf.log(tf.clip_by_value(y, 1e-10, 1.0)))
-      # tf.summary.scalar("loss", loss)
-      # train_op = tf.train.AdagradOptimizer(0.01).minimize(
-      #     loss, global_step=global_step)
-
-      # # Test trained model
-      # label = tf.argmax(y_, 1, name="label")
-      # prediction = tf.argmax(y, 1, name="prediction")
-      # correct_prediction = tf.equal(prediction, label)
-      # accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32), name="accuracy")
-      # tf.summary.scalar("acc", accuracy)
-
-      # saver = tf.train.Saver()
-      # summary_op = tf.summary.merge_all()
-      # init_op = tf.global_variables_initializer()
 
     # Create a "supervisor", which oversees the training process and stores model state into HDFS
     logdir = ctx.absolute_path(args.model)
@@ -153,19 +114,21 @@ def main_fun(args, ctx):
         # perform *synchronous* training.
 
         if args.mode == "train":
-          sess.run(init_op)
-          
-          merged = tf.summary.merge_all()
-          train_writer = tf.summary.FileWriter(log_dir, sess.graph)
-          
-          new_saver = tf.train.Saver(max_to_keep=100)
-          ckpt = tf.train.get_checkpoint_state(model_path)
-          if ckpt and ckpt.model_checkpoint_path:
-            new_saver.restore(sess, ckpt.model_checkpoint_path)
-            print("restore and continue training!")
-          else:
-            pass
+          #sess.run(init_op)
+          #merged = tf.summary.merge_all()
+          #train_writer = tf.summary.FileWriter(log_dir, sess.graph)
+          #new_saver = tf.train.Saver(max_to_keep=100)
 
+          #ckpt = tf.train.get_checkpoint_state(model_path)
+          #if ckpt and ckpt.model_checkpoint_path:
+          #  new_saver.restore(sess, ckpt.model_checkpoint_path)
+          #  print("restore and continue training!")
+          #else:
+          #  pass
+          #_, summary = sess.run([train_op, summary_op], {train_mode: True})
+          _, summary, step = sess.run([train_op, summary_op, global_step])
+          if task_index == 0:
+            summary_writer.add_summary(summary, step)
 
         
           # _, summary, step = sess.run([train_op, summary_op, global_step])
