@@ -12,10 +12,6 @@ def main_fun(args, ctx):
 
   import inception_resnet_v1
   
-  #from tensorflowonspark import TFNode
-  #strategy = tf.distribute.experimental.MultiWorkerMirroredStrategy()
-  #tf_feed = TFNode.DataFeed(ctx.mgr, False)
-
   worker_num = ctx.worker_num
   job_name = ctx.job_name
   task_index = ctx.task_index
@@ -50,7 +46,8 @@ def main_fun(args, ctx):
       worker_device="/job:worker/task:%d" % task_index,
       cluster=cluster)):
       
-      ds = tf.data.Dataset.from_generator(rdd_generator, (tf.int64, tf.int64, tf.string), (tf.TensorShape([]), tf.TensorShape([]), tf.TensorShape([160, 160, 3])))
+      ds = tf.data.Dataset.from_generator(rdd_generator, (tf.int64, tf.int64, tf.float32), (tf.TensorShape([]), tf.TensorShape([]), tf.TensorShape([160, 160, 3])))
+      ds = ds.batch(args.batch_size)
       iterator = ds.make_one_shot_iterator()
       age_labels, gender_labels, images = iterator.get_next()
       images = tf.reverse_v2(images, [-1])
@@ -114,28 +111,9 @@ def main_fun(args, ctx):
         # perform *synchronous* training.
 
         if args.mode == "train":
-          #sess.run(init_op)
-          #merged = tf.summary.merge_all()
-          #train_writer = tf.summary.FileWriter(log_dir, sess.graph)
-          #new_saver = tf.train.Saver(max_to_keep=100)
-
-          #ckpt = tf.train.get_checkpoint_state(model_path)
-          #if ckpt and ckpt.model_checkpoint_path:
-          #  new_saver.restore(sess, ckpt.model_checkpoint_path)
-          #  print("restore and continue training!")
-          #else:
-          #  pass
-          #_, summary = sess.run([train_op, summary_op], {train_mode: True})
-          _, summary, step = sess.run([train_op, summary_op, global_step])
+          _, summary, step = sess.run([train_op, summary_op, global_step], {train_mode: True})
           if task_index == 0:
             summary_writer.add_summary(summary, step)
-
-        
-          # _, summary, step = sess.run([train_op, summary_op, global_step])
-          # if (step % 100 == 0) and (not sess.should_stop()):
-          #   print("{} step: {} accuracy: {}".format(datetime.now().isoformat(), step, sess.run(accuracy)))
-          # if task_index == 0:
-          #   summary_writer.add_summary(summary, step)
         else:  # args.mode == "inference"
           pass
           # labels, preds, acc = sess.run([label, prediction, accuracy])
