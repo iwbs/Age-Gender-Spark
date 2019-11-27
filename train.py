@@ -47,6 +47,7 @@ if __name__ == "__main__":
   parser.add_argument("--batch_size", help="number of records per batch", type=int, default=4)
   parser.add_argument("--mode", help="train|inference", default="train")
   parser.add_argument("--rdma", help="use rdma connection", default=False)
+  parser.add_argument("--output", help="HDFS path to save test/inference output", default="predictions_imdb")
   args = parser.parse_args()
   print("args:", args)
 
@@ -66,5 +67,9 @@ if __name__ == "__main__":
   #df.show()
   
   cluster = TFCluster.run(sc, dist.main_fun, args, args.cluster_size, num_ps, args.tensorboard, TFCluster.InputMode.SPARK)
-  cluster.train(example_rdd, args.epochs)
+  if args.mode == "train":
+    cluster.train(example_rdd, args.epochs)
+  else:
+    labelRDD = cluster.inference(example_rdd)
+    labelRDD.saveAsTextFile(args.output)
   cluster.shutdown()
