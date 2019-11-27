@@ -90,7 +90,8 @@ def main_fun(args, ctx):
       summary_op = tf.summary.merge_all()
       init_op = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
 
-
+      mean_error_age, mean_gender_acc, mean_loss = [], [], []
+      
     # Create a "supervisor", which oversees the training process and stores model state into HDFS
     logdir = ctx.absolute_path(args.model)
     print("tensorflow model path: {0}".format(logdir))
