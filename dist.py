@@ -90,8 +90,8 @@ def main_fun(args, ctx):
       summary_op = tf.summary.merge_all()
       init_op = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
 
-      mean_error_age, mean_gender_acc, mean_loss = [], [], []
-      
+      #mean_error_age, mean_gender_acc, mean_loss = [], [], []
+
     # Create a "supervisor", which oversees the training process and stores model state into HDFS
     logdir = ctx.absolute_path(args.model)
     print("tensorflow model path: {0}".format(logdir))
@@ -119,10 +119,12 @@ def main_fun(args, ctx):
         else:  # args.mode == "inference"
           prob_gender_val, real_gender, prob_age_val, real_age, image_val, gender_acc_val, abs_age_error_val, cross_entropy_mean_val = sess.run(
                     [prob_gender, gender_labels, prob_age, age_labels, images, gender_acc, abs_loss, total_loss], {train_mode: False})
-          mean_error_age.append(abs_age_error_val)
-          mean_gender_acc.append(gender_acc_val)
-          mean_loss.append(cross_entropy_mean_val)
-          print("Age_MAE:%.2f,Gender_Acc:%.2f%%,Loss:%.2f" % (abs_age_error_val, gender_acc_val * 100, cross_entropy_mean_val))
+          results = ["{} Real Gender/Age: {}/{}, Predicted Gender/Age: {}/{}".format(datetime.now().isoformat(), rg, ra, pg, pa) for rg, ra, pg, pa in zip(real_gender, real_age, prob_gender_val, prob_age_val)]
+          tf_feed.batch_results(results)
+          #mean_error_age.append(abs_age_error_val)
+          #mean_gender_acc.append(gender_acc_val)
+          #mean_loss.append(cross_entropy_mean_val)
+          #print("Age_MAE:%.2f,Gender_Acc:%.2f%%,Loss:%.2f" % (abs_age_error_val, gender_acc_val * 100, cross_entropy_mean_val))
           # labels, preds, acc = sess.run([label, prediction, accuracy])
           # results = ["{} Label: {}, Prediction: {}".format(datetime.now().isoformat(), l, p) for l, p in zip(labels, preds)]
           # tf_feed.batch_results(results)
