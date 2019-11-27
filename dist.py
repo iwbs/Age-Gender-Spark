@@ -65,9 +65,10 @@ def main_fun(args, ctx):
       total_loss = tf.add_n([gender_cross_entropy_mean, age_cross_entropy_mean] + tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
 
       age_ = tf.cast(tf.constant([i for i in range(0, 101)]), tf.float32)
-      age = tf.reduce_sum(tf.multiply(tf.nn.softmax(age_logits), age_), axis=1)
-      abs_loss = tf.losses.absolute_difference(age_labels, age)
+      prob_age = tf.reduce_sum(tf.multiply(tf.nn.softmax(age_logits), age_), axis=1)
+      abs_loss = tf.losses.absolute_difference(age_labels, prob_age)
 
+      prob_gender = tf.argmax(tf.nn.softmax(gender_logits), 1)
       gender_acc = tf.reduce_mean(tf.cast(tf.nn.in_top_k(gender_logits, gender_labels, 1), tf.float32))
 
       tf.summary.scalar("age_cross_entropy", age_cross_entropy_mean)
@@ -115,7 +116,12 @@ def main_fun(args, ctx):
           if task_index == 0:
             summary_writer.add_summary(summary, step)
         else:  # args.mode == "inference"
-          pass
+          prob_gender_val, real_gender, prob_age_val, real_age, image_val, gender_acc_val, abs_age_error_val, cross_entropy_mean_val = sess.run(
+                    [prob_gender, gender_labels, prob_age, age_labels, images, gender_acc, abs_loss, total_loss], {train_mode: False})
+          mean_error_age.append(abs_age_error_val)
+          mean_gender_acc.append(gender_acc_val)
+          mean_loss.append(cross_entropy_mean_val)
+          print("Age_MAE:%.2f,Gender_Acc:%.2f%%,Loss:%.2f" % (abs_age_error_val, gender_acc_val * 100, cross_entropy_mean_val))
           # labels, preds, acc = sess.run([label, prediction, accuracy])
           # results = ["{} Label: {}, Prediction: {}".format(datetime.now().isoformat(), l, p) for l, p in zip(labels, preds)]
           # tf_feed.batch_results(results)
